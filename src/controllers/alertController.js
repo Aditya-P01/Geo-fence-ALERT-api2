@@ -11,12 +11,14 @@ const getAllAlerts = async (req, res, next) => {
       fence_id,
       event_type,
       delivery_status,
+      start_date,
+      end_date,
       page: rawPage,
       limit: rawLimit,
     } = req.query;
 
     const page  = Math.max(1, parseInt(rawPage || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(rawLimit || '20', 10)));
+    const limit = Math.min(10000, Math.max(1, parseInt(rawLimit || '20', 10)));
     const offset = (page - 1) * limit;
 
     // Dynamic WHERE clause — always starts with 1=1 for easy appending
@@ -38,6 +40,14 @@ const getAllAlerts = async (req, res, next) => {
     if (delivery_status) {
       params.push(delivery_status);
       whereClause += ` AND ae.delivery_status = $${params.length}`;
+    }
+    if (start_date) {
+      params.push(new Date(start_date));
+      whereClause += ` AND ae.created_at >= $${params.length}`;
+    }
+    if (end_date) {
+      params.push(new Date(end_date));
+      whereClause += ` AND ae.created_at <= $${params.length}`;
     }
 
     // Count total results (for pagination metadata)
