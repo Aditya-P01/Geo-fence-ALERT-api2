@@ -38,11 +38,11 @@ services:
 
   # ── Node.js API ──────────────────────────────────────────────────
   app:
-    build: .
+    build: ./backend
     container_name: geofence_app
     restart: unless-stopped
     ports:
-      - '3000:3000'
+      - '3000:3001'
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:password@postgres:5432/geofence_db
