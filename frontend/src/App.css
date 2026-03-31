@@ -1,5 +1,13 @@
 /* ── CSS Reset & Variables ─────────────────────────────────── */
+<<<<<<< HEAD
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+=======
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+>>>>>>> frontend-branch
 
 :root {
   --color-bg:         #0f172a;
@@ -17,10 +25,20 @@
   --color-exit:       #f43f5e;
   --navbar-height:    60px;
   --radius:           10px;
+<<<<<<< HEAD
   --shadow:           0 4px 24px rgba(0,0,0,0.35);
 }
 
 html, body, #root { height: 100%; width: 100%; }
+=======
+  --shadow:           0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+>>>>>>> frontend-branch
 
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -31,8 +49,32 @@ body {
 }
 
 /* ── App Shell ─────────────────────────────────────────────── */
+<<<<<<< HEAD
 .app-shell { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .app-content { flex: 1; overflow: auto; display: flex; flex-direction: column; }
+=======
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-content {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Common page layout ────────────────────────────────────── */
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--navbar-height));
+}
+>>>>>>> frontend-branch
 
 /* ── Cards ─────────────────────────────────────────────────── */
 .card {
@@ -45,6 +87,7 @@ body {
 
 /* ── Badge chips ─────────────────────────────────────────────*/
 .badge {
+<<<<<<< HEAD
   display: inline-flex; align-items: center; padding: 0.2rem 0.6rem;
   border-radius: 99px; font-size: 0.72rem; font-weight: 600;
   letter-spacing: 0.04em; text-transform: uppercase;
@@ -60,15 +103,47 @@ body {
   display: inline-flex; align-items: center; gap: 0.4rem;
   padding: 0.5rem 1.1rem; border: none; border-radius: 8px;
   font-size: 0.875rem; font-weight: 600; cursor: pointer;
+=======
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.badge--enter     { background: rgba(16, 185, 129, 0.18); color: var(--color-enter); }
+.badge--exit      { background: rgba(244, 63, 94, 0.18);  color: var(--color-exit); }
+.badge--delivered { background: rgba(34, 197, 94, 0.18);  color: var(--color-success); }
+.badge--failed    { background: rgba(239, 68, 68, 0.18);  color: var(--color-danger); }
+.badge--pending   { background: rgba(245, 158, 11, 0.18); color: var(--color-warning); }
+
+/* ── Buttons ─────────────────────────────────────────────────*/
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+>>>>>>> frontend-branch
   transition: opacity 0.15s, transform 0.12s;
 }
 .btn:hover  { opacity: 0.88; }
 .btn:active { transform: scale(0.97); }
+<<<<<<< HEAD
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+=======
+>>>>>>> frontend-branch
 .btn--primary { background: var(--color-primary); color: #fff; }
 .btn--danger  { background: var(--color-danger);  color: #fff; }
 .btn--ghost   { background: transparent; border: 1px solid var(--color-border); color: var(--color-text-muted); }
 
+<<<<<<< HEAD
 /* ── Status dot ──────────────────────────────────────────────*/
 .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .status-dot--green { background: var(--color-success); box-shadow: 0 0 6px var(--color-success); }
@@ -80,6 +155,40 @@ body {
 
 /* ── Empty state ─────────────────────────────────────────────*/
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; color: var(--color-text-muted); gap: 0.75rem; text-align: center; }
+=======
+/* ── Status Pill ─────────────────────────────────────────────*/
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.status-dot--green  { background: var(--color-success); box-shadow: 0 0 6px var(--color-success); }
+.status-dot--red    { background: var(--color-danger);  box-shadow: 0 0 6px var(--color-danger); }
+.status-dot--yellow { background: var(--color-warning); }
+
+/* ── Spinner ─────────────────────────────────────────────────*/
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Empty state ─────────────────────────────────────────────*/
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--color-text-muted);
+  gap: 0.75rem;
+  text-align: center;
+}
+>>>>>>> frontend-branch
 .empty-state-icon { font-size: 2.5rem; }
 .empty-state-text { font-size: 0.95rem; }
 
@@ -88,6 +197,7 @@ body {
 ::-webkit-scrollbar-track  { background: transparent; }
 ::-webkit-scrollbar-thumb  { background: var(--color-border); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+<<<<<<< HEAD
 
 /* ── Page loader (Suspense fallback) ────────────────────────*/
 .page-loader { display: flex; align-items: center; justify-content: center; height: 100%; flex: 1; }
@@ -131,3 +241,5 @@ body {
   .app-shell { padding-bottom: env(safe-area-inset-bottom); }
 }
 
+=======
+>>>>>>> frontend-branch

@@ -26,10 +26,30 @@
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
+<<<<<<< HEAD
     "extends": ["react-app", "react-app/jest"]
   },
   "browserslist": {
     "production": [">0.2%", "not dead", "not op_mini all"],
     "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+=======
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "proxy": "http://localhost:3000",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+>>>>>>> frontend-branch
   }
 }
