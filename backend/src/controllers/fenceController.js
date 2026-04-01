@@ -145,7 +145,7 @@ const getFenceAlerts = async (req, res, next) => {
     const limit = Math.min(200, parseInt(req.query.limit || '50', 10));
 
     const result = await db.query(
-      `SELECT id, device_id, event_type, device_lat, device_lng, delivery_status, created_at
+      `SELECT id, device_id, event_type, device_lat, device_lng, delivery_status, metadata, created_at
        FROM alert_events
        WHERE fence_id = $1
        ORDER BY created_at DESC
@@ -163,16 +163,16 @@ const getOwnerStats = async (req, res, next) => {
     const result = await db.query(`
       SELECT
         gf.owner_id,
-        gf.owner_name,
-        COUNT(DISTINCT gf.id)                                         AS fence_count,
-        COUNT(ae.id)                                                  AS total_alerts,
-        COUNT(ae.id) FILTER (WHERE ae.event_type = 'ENTER')          AS enter_count,
-        COUNT(ae.id) FILTER (WHERE ae.event_type = 'EXIT')           AS exit_count,
-        MAX(gf.created_at)                                            AS last_fence_created
+        MAX(gf.owner_name)                                            AS owner_name,
+        COUNT(DISTINCT gf.id)                                           AS fence_count,
+        COUNT(ae.id)                                                    AS total_alerts,
+        COUNT(ae.id) FILTER (WHERE ae.event_type = 'ENTER')             AS enter_count,
+        COUNT(ae.id) FILTER (WHERE ae.event_type = 'EXIT')              AS exit_count,
+        MAX(gf.created_at)                                              AS last_fence_created
       FROM geo_fences gf
       LEFT JOIN alert_events ae ON ae.fence_id = gf.id
-      WHERE gf.is_active = TRUE AND gf.owner_id IS NOT NULL
-      GROUP BY gf.owner_id, gf.owner_name
+      WHERE gf.owner_id IS NOT NULL
+      GROUP BY gf.owner_id
       ORDER BY fence_count DESC
     `);
     res.json({ owners: result.rows });

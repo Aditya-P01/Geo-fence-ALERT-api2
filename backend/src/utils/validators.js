@@ -54,14 +54,15 @@ const fenceUpdateSchema = Joi.object({
   events: Joi.array().items(Joi.string().valid('ENTER', 'EXIT')),
   metadata: Joi.object(),
   is_active: Joi.boolean(),
+  owner_name: Joi.string().trim().max(255).optional().allow('', null),
 });
 
 // ── Location Schema ───────────────────────────────────────────
 const locationSchema = Joi.object({
   lat: lat,
   lng: lng,
-  timestamp: Joi.date().iso().optional().default(() => new Date()),
-  metadata: Joi.object().default({}),
+  timestamp: Joi.date().optional(),
+  metadata: Joi.object().unknown(true).default({}),
 });
 
 // ── Webhook Schema ────────────────────────────────────────────
