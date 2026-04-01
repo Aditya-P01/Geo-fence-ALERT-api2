@@ -1,270 +1,269 @@
 import { useState, useEffect, useRef } from 'react';
+import {
+  loadGoogleMaps,
+  getOneShotPosition,
+  readDefaultCenter,
+  subscribeUserPos,
+  FENCE_COLORS,
+  userDotIcon,
+  darkMapStyles,
+} from './mapUtils';
 import './MapView.css';
 
-const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+const KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
-// ── Singleton loader — script injected exactly ONCE ───────────
-let _mapsPromise = null;
-function loadGoogleMaps() {
-  if (_mapsPromise) return _mapsPromise;
-  _mapsPromise = new Promise((resolve, reject) => {
-    if (window.google?.maps) { resolve(window.google.maps); return; }
-    const existing = document.querySelector('script[src*="maps.googleapis.com"]');
-    if (existing) { existing.addEventListener('load', () => resolve(window.google.maps)); return; }
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&libraries=drawing,geometry`;
-    script.async = true; script.defer = true;
-    script.onload  = () => resolve(window.google.maps);
-    script.onerror = () => { _mapsPromise = null; reject(new Error('Failed to load Google Maps')); };
-    document.head.appendChild(script);
-  });
-  return _mapsPromise;
-}
+const drawOpts = (fill, stroke) => ({
+  fillColor: fill,
+  fillOpacity: 0.2,
+  strokeColor: stroke,
+  strokeWeight: 2,
+  clickable: false,
+  editable: true,
+  zIndex: 1,
+});
 
-// ── User-position blue-dot singleton (shared across both dashboards) ──
-let _userWatchId = null;
-let _userPos    = null;
-const _posListeners = new Set();
-function subscribeUserPos(cb) {
-  _posListeners.add(cb);
-  if (_userPos) cb(_userPos);
-  if (_userWatchId === null && navigator.geolocation) {
-    _userWatchId = navigator.geolocation.watchPosition(
-      pos => {
-        _userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
-        _posListeners.forEach(fn => fn(_userPos));
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 0 }
-    );
+function fenceShape(map, fence, colors, onFenceClick) {
+  const common = {
+    map,
+    fillColor: colors.fill,
+    fillOpacity: 0.15,
+    strokeColor: colors.stroke,
+    strokeOpacity: 0.9,
+    strokeWeight: 2,
+    clickable: true,
+    zIndex: 200,
+  };
+  if (fence.type === 'circle' && fence.center) {
+    const c = new window.google.maps.Circle({
+      ...common,
+      center: fence.center,
+      radius: fence.radius_meters,
+    });
+    c.addListener('click', () => onFenceClick?.(fence));
+    return c;
   }
-  return () => _posListeners.delete(cb);
+  if (fence.type === 'polygon' && fence.coordinates) {
+    const p = new window.google.maps.Polygon({
+      ...common,
+      paths: fence.coordinates.map((x) => ({ lat: x.lat, lng: x.lng })),
+    });
+    p.addListener('click', () => onFenceClick?.(fence));
+    return p;
+  }
+  return null;
 }
 
-const FENCE_COLORS = {
-  circle:  { stroke: '#6366f1', fill: '#6366f1' },
-  polygon: { stroke: '#10b981', fill: '#10b981' },
-};
-
-/**
- * MapView — full map with live blue-dot, fence overlays, drawing tools, device marker.
- *
- * Props:
- *   fences         {Array}    — fence objects to render
- *   devicePosition {Object}   — { lat, lng } external device pin (cyan) or null
- *   drawingMode    {string}   — 'circle' | 'polygon' | null
- *   onFenceDrawn   {Function} — called with shape data when user draws
- *   onFenceClick   {Function} — called with fence object when overlay is clicked
- *   showUserDot    {bool}     — show live blue dot (default true)
- */
 export default function MapView({
-  fences = [], devicePosition, drawingMode,
-  onFenceDrawn, onFenceClick, showUserDot = true,
+  fences = [],
+  devicePosition,
+  drawingMode,
+  onFenceDrawn,
+  onFenceClick,
+  showUserDot = true,
 }) {
-  const containerRef      = useRef(null);
-  const mapRef            = useRef(null);
-  const overlaysRef       = useRef([]);
-  const deviceMarkerRef   = useRef(null);
-  const userDotRef        = useRef(null);
-  const userAccCircleRef  = useRef(null);
-  const drawingManagerRef = useRef(null);
-  const centeredRef       = useRef(false);
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const overlaysRef = useRef([]);
+  const deviceMarkerRef = useRef(null);
+  const userDotRef = useRef(null);
+  const userAccRef = useRef(null);
+  const drawMgrRef = useRef(null);
+  const centeredRef = useRef(false);
+  const onDrawRef = useRef(onFenceDrawn);
+  onDrawRef.current = onFenceDrawn;
 
   const [mapsLoaded, setMapsLoaded] = useState(false);
-  const [error,      setError]      = useState(null);
+  const [error, setError] = useState(null);
   const [gpsWaiting, setGpsWaiting] = useState(true);
+  const [ready, setReady] = useState(false);
 
-  // ── 1. Load Google Maps SDK ───────────────────────────────────
   useEffect(() => {
-    if (!GOOGLE_MAPS_KEY || GOOGLE_MAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+    if (!KEY || KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
       setError('Set VITE_GOOGLE_MAPS_KEY in frontend/.env.local');
       return;
     }
-    loadGoogleMaps().then(() => setMapsLoaded(true)).catch(e => setError(e.message));
+    loadGoogleMaps().then(() => setMapsLoaded(true)).catch((e) => setError(e.message));
   }, []);
 
-  // ── 2. Init map (no hardcoded center — waits for GPS) ────────
   useEffect(() => {
     if (!mapsLoaded || !containerRef.current || mapRef.current) return;
+    let cancelled = false;
+    (async () => {
+      const shot = await getOneShotPosition();
+      if (cancelled) return;
+      const fb = readDefaultCenter();
+      const center = shot ? { lat: shot.lat, lng: shot.lng } : fb || { lat: 20, lng: 0 };
+      const zoom = shot ? 16 : fb ? 12 : 2;
 
-    // Start at world zoom; will fly to user location once GPS resolves
-    mapRef.current = new window.google.maps.Map(containerRef.current, {
-      center: { lat: 20, lng: 78 },
-      zoom: 3,
-      mapTypeId: 'roadmap',
-      styles: darkMapStyles,
-      zoomControl: true,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: true,
-    });
+      const m = new window.google.maps.Map(containerRef.current, {
+        center,
+        zoom,
+        mapTypeId: 'roadmap',
+        styles: darkMapStyles,
+        zoomControl: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
+      });
+      mapRef.current = m;
 
-    // Drawing manager
-    drawingManagerRef.current = new window.google.maps.drawing.DrawingManager({
-      drawingControl: false,
-      circleOptions:  { fillColor: '#6366f1', fillOpacity: 0.2, strokeColor: '#6366f1', strokeWeight: 2, clickable: false, editable: true, zIndex: 1 },
-      polygonOptions: { fillColor: '#10b981', fillOpacity: 0.2, strokeColor: '#10b981', strokeWeight: 2, clickable: false, editable: true, zIndex: 1 },
-    });
-    drawingManagerRef.current.setMap(mapRef.current);
+      const dm = new window.google.maps.drawing.DrawingManager({
+        drawingControl: false,
+        circleOptions: drawOpts('#6366f1', '#6366f1'),
+        polygonOptions: drawOpts('#10b981', '#10b981'),
+      });
+      dm.setMap(m);
+      drawMgrRef.current = dm;
 
-    window.google.maps.event.addListener(drawingManagerRef.current, 'circlecomplete', (circle) => {
-      const data = { type: 'circle', center: { lat: circle.getCenter().lat(), lng: circle.getCenter().lng() }, radius_meters: Math.round(circle.getRadius()) };
-      circle.setMap(null);
-      drawingManagerRef.current.setDrawingMode(null);
-      if (onFenceDrawn) onFenceDrawn(data);
-    });
-    window.google.maps.event.addListener(drawingManagerRef.current, 'polygoncomplete', (poly) => {
-      const coords = poly.getPath().getArray().map(ll => ({ lat: ll.lat(), lng: ll.lng() }));
-      if (coords[0].lat !== coords[coords.length - 1].lat) coords.push(coords[0]);
-      poly.setMap(null);
-      drawingManagerRef.current.setDrawingMode(null);
-      if (onFenceDrawn) onFenceDrawn({ type: 'polygon', coordinates: coords });
-    });
+      const g = window.google.maps;
+      g.event.addListener(dm, 'circlecomplete', (circle) => {
+        const data = {
+          type: 'circle',
+          center: { lat: circle.getCenter().lat(), lng: circle.getCenter().lng() },
+          radius_meters: Math.round(circle.getRadius()),
+        };
+        circle.setMap(null);
+        dm.setDrawingMode(null);
+        onDrawRef.current?.(data);
+      });
+      g.event.addListener(dm, 'polygoncomplete', (poly) => {
+        const coords = poly.getPath().getArray().map((ll) => ({ lat: ll.lat(), lng: ll.lng() }));
+        const a = coords[0];
+        const b = coords[coords.length - 1];
+        if (a && b && (a.lat !== b.lat || a.lng !== b.lng)) coords.push({ lat: a.lat, lng: a.lng });
+        poly.setMap(null);
+        dm.setDrawingMode(null);
+        onDrawRef.current?.({ type: 'polygon', coordinates: coords });
+      });
+
+      if (!cancelled) setReady(true);
+    })();
+    return () => { cancelled = true; };
   }, [mapsLoaded]);
 
-  // ── 3. Live blue dot — user's own GPS position ───────────────
   useEffect(() => {
-    if (!showUserDot || !mapsLoaded) return;
-
-    const unsub = subscribeUserPos((pos) => {
+    if (!showUserDot || !ready) return;
+    return subscribeUserPos((pos) => {
       setGpsWaiting(false);
+      const map = mapRef.current;
+      if (!map || !window.google) return;
 
-      if (!mapRef.current || !window.google) return;
-
-      // First fix → fly to user location at street level
       if (!centeredRef.current && !devicePosition) {
-        mapRef.current.setCenter({ lat: pos.lat, lng: pos.lng });
-        mapRef.current.setZoom(15);
+        map.panTo({ lat: pos.lat, lng: pos.lng });
+        map.setZoom(16);
         centeredRef.current = true;
       }
-
-      // Accuracy circle
-      if (!userAccCircleRef.current) {
-        userAccCircleRef.current = new window.google.maps.Circle({
-          map: mapRef.current,
-          center: { lat: pos.lat, lng: pos.lng },
-          radius: pos.acc,
-          fillColor: '#4285f4', fillOpacity: 0.12,
-          strokeColor: '#4285f4', strokeOpacity: 0.4, strokeWeight: 1,
-          clickable: false, zIndex: 490,
+      const acc = Math.max(pos.acc || 10, 8);
+      const c = { lat: pos.lat, lng: pos.lng };
+      if (!userAccRef.current) {
+        userAccRef.current = new window.google.maps.Circle({
+          map,
+          center: c,
+          radius: acc,
+          fillColor: '#1a73e8',
+          fillOpacity: 0.1,
+          strokeColor: '#1a73e8',
+          strokeOpacity: 0.35,
+          strokeWeight: 1,
+          clickable: false,
+          zIndex: 490,
         });
       } else {
-        userAccCircleRef.current.setCenter({ lat: pos.lat, lng: pos.lng });
-        userAccCircleRef.current.setRadius(pos.acc);
+        userAccRef.current.setCenter(c);
+        userAccRef.current.setRadius(acc);
       }
-
-      // Blue dot
       if (!userDotRef.current) {
         userDotRef.current = new window.google.maps.Marker({
-          map: mapRef.current,
-          position: { lat: pos.lat, lng: pos.lng },
+          map,
+          position: c,
           zIndex: 500,
           title: 'Your location',
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 9,
-            fillColor: '#4285f4', fillOpacity: 1,
-            strokeColor: '#fff',  strokeWeight: 2.5,
-          },
+          optimized: true,
+          icon: userDotIcon(window.google.maps),
         });
-      } else {
-        userDotRef.current.setPosition({ lat: pos.lat, lng: pos.lng });
-      }
+      } else userDotRef.current.setPosition(c);
     });
-    return unsub;
-  }, [showUserDot, mapsLoaded, devicePosition]);
+  }, [showUserDot, ready, devicePosition]);
 
-  // ── 4. Sync drawing mode ──────────────────────────────────────
   useEffect(() => {
-    if (!drawingManagerRef.current || !window.google) return;
-    const modeMap = { circle: window.google.maps.drawing.OverlayType.CIRCLE, polygon: window.google.maps.drawing.OverlayType.POLYGON };
-    drawingManagerRef.current.setDrawingMode(drawingMode ? modeMap[drawingMode] : null);
+    const dm = drawMgrRef.current;
+    if (!dm || !window.google) return;
+    const T = window.google.maps.drawing.OverlayType;
+    dm.setDrawingMode(drawingMode ? { circle: T.CIRCLE, polygon: T.POLYGON }[drawingMode] : null);
   }, [drawingMode]);
 
-  // ── 5. Render fence overlays ──────────────────────────────────
   useEffect(() => {
     if (!mapRef.current || !window.google) return;
-    overlaysRef.current.forEach(o => o.setMap(null));
+    overlaysRef.current.forEach((o) => o.setMap(null));
     overlaysRef.current = [];
-
-    fences.forEach(fence => {
+    fences.forEach((fence) => {
       const colors = FENCE_COLORS[fence.type] || FENCE_COLORS.circle;
-      let shape;
-
-      if (fence.type === 'circle' && fence.center) {
-        shape = new window.google.maps.Circle({
-          map: mapRef.current,
-          center: fence.center,
-          radius: fence.radius_meters,
-          fillColor: colors.fill, fillOpacity: 0.15,
-          strokeColor: colors.stroke, strokeOpacity: 0.9, strokeWeight: 2,
-          clickable: true, zIndex: 200,
-        });
-        shape.addListener('click', () => onFenceClick && onFenceClick(fence));
-      } else if (fence.type === 'polygon' && fence.coordinates) {
-        shape = new window.google.maps.Polygon({
-          map: mapRef.current,
-          paths: fence.coordinates.map(c => ({ lat: c.lat, lng: c.lng })),
-          fillColor: colors.fill, fillOpacity: 0.15,
-          strokeColor: colors.stroke, strokeOpacity: 0.9, strokeWeight: 2,
-          clickable: true, zIndex: 200,
-        });
-        shape.addListener('click', () => onFenceClick && onFenceClick(fence));
-      }
+      const shape = fenceShape(mapRef.current, fence, colors, onFenceClick);
       if (shape) overlaysRef.current.push(shape);
     });
-  }, [fences]);
+  }, [fences, onFenceClick]);
 
-  // ── 6. External device marker (cyan) ─────────────────────────
   useEffect(() => {
     if (!mapRef.current || !window.google) return;
+    const map = mapRef.current;
     if (!devicePosition) {
-      deviceMarkerRef.current?.setMap(null);
+      const mk = deviceMarkerRef.current;
+      if (mk?._accCircle) { mk._accCircle.setMap(null); mk._accCircle = null; }
+      mk?.setMap(null);
       deviceMarkerRef.current = null;
       return;
     }
-    if (!deviceMarkerRef.current) {
-      deviceMarkerRef.current = new window.google.maps.Marker({
-        map: mapRef.current, zIndex: 999, title: 'Your Device',
-        icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#22d3ee', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+    let mk = deviceMarkerRef.current;
+    if (!mk) {
+      mk = new window.google.maps.Marker({
+        map,
+        zIndex: 999,
+        title: 'Device location',
+        optimized: true,
+        icon: userDotIcon(window.google.maps),
       });
+      deviceMarkerRef.current = mk;
     }
-    deviceMarkerRef.current.setPosition(devicePosition);
+    mk.setPosition(devicePosition);
+    const r = devicePosition.accuracy != null ? Math.max(devicePosition.accuracy, 8) : 25;
+    if (!mk._accCircle) {
+      mk._accCircle = new window.google.maps.Circle({
+        map,
+        center: devicePosition,
+        radius: r,
+        fillColor: '#1a73e8',
+        fillOpacity: 0.08,
+        strokeColor: '#1a73e8',
+        strokeOpacity: 0.3,
+        strokeWeight: 1,
+        clickable: false,
+        zIndex: 498,
+      });
+    } else {
+      mk._accCircle.setCenter(devicePosition);
+      mk._accCircle.setRadius(r);
+    }
     if (!centeredRef.current) {
-      mapRef.current.setCenter(devicePosition);
-      mapRef.current.setZoom(15);
+      map.panTo(devicePosition);
+      map.setZoom(16);
       centeredRef.current = true;
     }
   }, [devicePosition]);
 
-  // ── Render ────────────────────────────────────────────────────
-  if (error) return (
-    <div className="map-error"><span>⚠️</span><p>{error}</p></div>
-  );
-  if (!mapsLoaded) return (
-    <div className="map-loading"><div className="map-spinner" /><p>Loading map…</p></div>
-  );
+  if (error) return <div className="map-error"><span>⚠️</span><p>{error}</p></div>;
+  if (!mapsLoaded || !ready) {
+    return (
+      <div className="map-loading">
+        <div className="map-spinner" />
+        <p>{!mapsLoaded ? 'Loading map…' : 'Getting your location…'}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="map-wrapper">
       <div ref={containerRef} className="map-container" />
-      {gpsWaiting && showUserDot && (
-        <div className="map-gps-badge">📡 Acquiring GPS…</div>
-      )}
+      {gpsWaiting && showUserDot && <div className="map-gps-badge">📡 Acquiring GPS…</div>}
     </div>
   );
 }
-
-// ── Dark map style ─────────────────────────────────────────────
-const darkMapStyles = [
-  { elementType: 'geometry',            stylers: [{ color: '#0f172a' }] },
-  { elementType: 'labels.text.stroke',  stylers: [{ color: '#0f172a' }] },
-  { elementType: 'labels.text.fill',    stylers: [{ color: '#94a3b8' }] },
-  { featureType: 'road',            elementType: 'geometry',        stylers: [{ color: '#1e293b' }] },
-  { featureType: 'road',            elementType: 'geometry.stroke', stylers: [{ color: '#0f172a' }] },
-  { featureType: 'road.highway',    elementType: 'geometry',        stylers: [{ color: '#334155' }] },
-  { featureType: 'water',           elementType: 'geometry',        stylers: [{ color: '#0c1a29' }] },
-  { featureType: 'poi',             elementType: 'geometry',        stylers: [{ color: '#1e293b' }] },
-  { featureType: 'transit.station', elementType: 'geometry',        stylers: [{ color: '#1e293b' }] },
-  { featureType: 'administrative',  elementType: 'geometry',        stylers: [{ color: '#1e293b' }] },
-];

@@ -62,7 +62,7 @@ export default function PersonalDashboard() {
               onKeyDown={e => e.key === 'Enter' && e.target.blur()}
               className="pd-name-input"
             />
-            <span className="pd-owner-id">ID: {owner?.owner_id?.split('-')[0] || 'Unknown'}</span>
+            <span className="pd-owner-id" title={owner?.owner_id}>ID: {owner?.owner_id || '—'}</span>
           </div>
         </div>
 
@@ -78,6 +78,8 @@ export default function PersonalDashboard() {
             onStartDraw={(mode) => { setDrawingMode(mode); setPendingShape(null); }}
             pendingShape={pendingShape}
             onPendingClear={() => setPendingShape(null)}
+            ownerId={owner.owner_id}
+            ownerName={owner.owner_name}
           />
         </div>
       </aside>

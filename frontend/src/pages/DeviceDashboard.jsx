@@ -8,34 +8,40 @@ import { locationApi, fenceApi } from '../api/client';
 import './DeviceDashboard.css';
 
 const DEVICE_ID_KEY = 'geo_device_id';
+const DEVICE_LABEL_KEY = 'geo_device_label';
+
 function getDeviceId() {
   let id = localStorage.getItem(DEVICE_ID_KEY);
-  if (!id) { id = `device-${Date.now()}`; localStorage.setItem(DEVICE_ID_KEY, id); }
+  if (!id) {
+    id = `device-${Date.now()}`;
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
   return id;
 }
 
 export default function DeviceDashboard() {
   const deviceId = getDeviceId();
+  const [deviceLabel, setDeviceLabel] = useState(() => localStorage.getItem(DEVICE_LABEL_KEY) || '');
   const { position, error: gpsError, isTracking, start, stop } = useGeolocation();
   const [fences, setFences]       = useState([]);
   const [insideFences, setInside] = useState([]);
   const [lastReport,   setLast]   = useState(null);
   const intervalRef = useRef(null);
 
-  // Load fences for map overlay
   useEffect(() => {
     fenceApi.getAll({ limit: 100 }).then(r => setFences(r.data.fences || [])).catch(() => {});
   }, []);
 
-  // Report position to backend every 5s when tracking
   useEffect(() => {
     if (isTracking && position) {
       const report = async () => {
         try {
+          const label = (localStorage.getItem(DEVICE_LABEL_KEY) || '').trim();
           const res = await locationApi.report(deviceId, {
             lat: position.lat,
             lng: position.lng,
             timestamp: new Date(position.timestamp).toISOString(),
+            ...(label ? { metadata: { device_label: label } } : {}),
           });
           setLast(res.data);
           setInside(res.data.currently_inside || []);
@@ -49,7 +55,6 @@ export default function DeviceDashboard() {
     return () => clearInterval(intervalRef.current);
   }, [isTracking, position?.lat, position?.lng]);
 
-  // Live alert toasts via Socket.IO
   useSocket('geo_alert', (event) => {
     if (event.device_id !== deviceId) return;
     if (event.event_type === 'ENTER') {
@@ -68,7 +73,6 @@ export default function DeviceDashboard() {
         }}
       />
 
-      {/* Left panel */}
       <aside className="device-sidebar">
         <div className="device-info-card">
           <div className="info-row">
@@ -123,7 +127,6 @@ export default function DeviceDashboard() {
           )}
         </div>
 
-        {/* Currently inside fences */}
         {insideFences.length > 0 && (
           <div className="inside-panel">
             <h4>Currently Inside</h4>
@@ -135,17 +138,24 @@ export default function DeviceDashboard() {
           </div>
         )}
 
-        {/* Live alert feed */}
         <div className="device-feed">
           <AlertFeed maxItems={30} />
         </div>
       </aside>
 
-      {/* Map */}
       <main className="device-map">
         <MapView
-          fences={fences}
-          devicePosition={position}
+          fences={fences.filter((f) => f.is_active)}
+          devicePosition={
+            position
+              ? {
+                  lat: position.lat,
+                  lng: position.lng,
+                  accuracy: position.accuracy,
+                }
+              : null
+          }
+          showUserDot={false}
         />
       </main>
     </div>

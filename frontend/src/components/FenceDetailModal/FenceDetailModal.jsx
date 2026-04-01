@@ -7,12 +7,12 @@ function fmtTime(ts) {
   return new Date(ts).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'medium' });
 }
 
-/**
- * FenceDetailModal — sliding panel shown when a fence is clicked.
- * Props:
- *   fence    {Object|null} — the fence to show; null = hidden
- *   onClose  {Function}
- */
+function alertDeviceLabel(a) {
+  const m = a.metadata;
+  const o = typeof m === 'string' ? (() => { try { return JSON.parse(m); } catch { return {}; } })() : m || {};
+  return o.device_label || o.device_name || null;
+}
+
 export default function FenceDetailModal({ fence, onClose }) {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,6 @@ export default function FenceDetailModal({ fence, onClose }) {
       .finally(() => setLoading(false));
   }, [fence?.id]);
 
-  // Prepend live alerts for THIS fence
   useSocket('geo_alert', (event) => {
     if (!fence || event.fence_id !== fence.id) return;
     setAlerts(prev => [
@@ -90,9 +89,20 @@ export default function FenceDetailModal({ fence, onClose }) {
                 <tr><th>Device</th><th>Event</th><th>Time</th></tr>
               </thead>
               <tbody>
-                {alerts.map((a, i) => (
+                {alerts.map((a, i) => {
+                  const label = alertDeviceLabel(a);
+                  return (
                   <tr key={a.id || i} className={`fdm-row ${a.event_type === 'ENTER' ? 'enter' : 'exit'}`}>
-                    <td className="device-cell">{a.device_id}</td>
+                    <td className="device-cell">
+                      {label ? (
+                        <>
+                          <span className="device-name">{label}</span>
+                          <span className="device-id-sub">{a.device_id}</span>
+                        </>
+                      ) : (
+                        a.device_id
+                      )}
+                    </td>
                     <td>
                       <span className={`event-pill ${a.event_type === 'ENTER' ? 'enter' : 'exit'}`}>
                         {a.event_type === 'ENTER' ? '→ ENTER' : '← EXIT'}
@@ -100,7 +110,8 @@ export default function FenceDetailModal({ fence, onClose }) {
                     </td>
                     <td className="time-cell">{fmtTime(a.created_at)}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

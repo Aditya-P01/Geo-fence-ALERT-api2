@@ -13,7 +13,15 @@ const DEFAULT_FORM = { name: '', description: '', radius_meters: 200, events: ['
  *   pendingShape   {Object|null} — shape data from map drawing
  *   onPendingClear {Function} — clear pending shape after save
  */
-export default function FencePanel({ fences, onRefresh, onStartDraw, pendingShape, onPendingClear }) {
+export default function FencePanel({
+  fences,
+  onRefresh,
+  onStartDraw,
+  pendingShape,
+  onPendingClear,
+  ownerId,
+  ownerName,
+}) {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -36,6 +44,8 @@ export default function FencePanel({ fences, onRefresh, onStartDraw, pendingShap
           ...pendingShape,
         };
         if (pendingShape.type === 'circle') body.radius_meters = Number(form.radius_meters) || pendingShape.radius_meters;
+        if (ownerId) body.owner_id = ownerId;
+        if (ownerName) body.owner_name = ownerName;
         await fenceApi.create(body);
         onPendingClear();
       }
