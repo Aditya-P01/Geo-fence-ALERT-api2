@@ -21,17 +21,42 @@ let mapsPromise;
 export function loadGoogleMaps() {
   if (mapsPromise) return mapsPromise;
   mapsPromise = new Promise((resolve, reject) => {
-    if (window.google?.maps) return resolve(window.google.maps);
+    if (window.google?.maps) {
+      resolve(window.google.maps);
+      return;
+    }
     const existing = document.querySelector('script[src*="maps.googleapis.com"]');
     if (existing) {
-      existing.addEventListener('load', () => resolve(window.google.maps));
+      const done = () => {
+        if (window.google?.maps) resolve(window.google.maps);
+        else reject(new Error('Google Maps script present but API not available'));
+      };
+      if (window.google?.maps) {
+        done();
+        return;
+      }
+      existing.addEventListener('load', done);
+      existing.addEventListener('error', () => {
+        mapsPromise = null;
+        reject(new Error('Failed to load Google Maps'));
+      });
       return;
     }
     const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${KEY}&libraries=drawing,geometry`;
-    s.async = s.defer = true;
-    s.onload = () => resolve(window.google.maps);
-    s.onerror = () => { mapsPromise = null; reject(new Error('Failed to load Google Maps')); };
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${KEY}&libraries=drawing,geometry&loading=async`;
+    s.async = true;
+    s.defer = true;
+    s.onload = () => {
+      if (window.google?.maps) resolve(window.google.maps);
+      else {
+        mapsPromise = null;
+        reject(new Error('Maps script loaded but google.maps is missing'));
+      }
+    };
+    s.onerror = () => {
+      mapsPromise = null;
+      reject(new Error('Failed to load Google Maps script (network or blocked)'));
+    };
     document.head.appendChild(s);
   });
   return mapsPromise;

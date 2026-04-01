@@ -33,13 +33,14 @@ app.set('io', io);
 // ── Security & Utility Middleware ──────────────────────────────
 const rateLimit = require('express-rate-limit');
 
-// Security Finding #4: Rate Limiting
+// Security Finding #4: Rate Limiting - raised for dev (map auto-polls heavily)
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 300, // 300 per IP per minute — enough for live map polling
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later', status: 429 } },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path.startsWith('/api/v1/health'), // never rate limit health checks
 });
 
 app.use(globalLimiter);

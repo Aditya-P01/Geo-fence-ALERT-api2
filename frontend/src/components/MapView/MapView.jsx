@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   loadGoogleMaps,
-  getOneShotPosition,
   readDefaultCenter,
   subscribeUserPos,
   FENCE_COLORS,
@@ -89,11 +88,9 @@ export default function MapView({
     if (!mapsLoaded || !containerRef.current || mapRef.current) return;
     let cancelled = false;
     (async () => {
-      const shot = await getOneShotPosition();
-      if (cancelled) return;
       const fb = readDefaultCenter();
-      const center = shot ? { lat: shot.lat, lng: shot.lng } : fb || { lat: 20, lng: 0 };
-      const zoom = shot ? 16 : fb ? 12 : 2;
+      const center = fb || { lat: 20, lng: 0 };
+      const zoom = fb ? 12 : 2;
 
       const m = new window.google.maps.Map(containerRef.current, {
         center,
@@ -136,7 +133,21 @@ export default function MapView({
         onDrawRef.current?.({ type: 'polygon', coordinates: coords });
       });
 
+      // Mark ready immediately (don't block on GPS prompt).
       if (!cancelled) setReady(true);
+
+      // One-shot GPS recenter (fast path) — does not block initial map render.
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (p) => {
+            if (cancelled || !mapRef.current) return;
+            mapRef.current.panTo({ lat: p.coords.latitude, lng: p.coords.longitude });
+            mapRef.current.setZoom(16);
+          },
+          () => { },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 }
+        );
+      }
     })();
     return () => { cancelled = true; };
   }, [mapsLoaded]);
@@ -251,11 +262,14 @@ export default function MapView({
   }, [devicePosition]);
 
   if (error) return <div className="map-error"><span>⚠️</span><p>{error}</p></div>;
-  if (!mapsLoaded || !ready) {
+
+  // Must mount the map container as soon as the JS API is loaded; otherwise `containerRef`
+  // stays null and the map never initializes (ready never flips true).
+  if (!mapsLoaded) {
     return (
       <div className="map-loading">
         <div className="map-spinner" />
-        <p>{!mapsLoaded ? 'Loading map…' : 'Getting your location…'}</p>
+        <p>Loading Google Maps…</p>
       </div>
     );
   }
@@ -263,7 +277,15 @@ export default function MapView({
   return (
     <div className="map-wrapper">
       <div ref={containerRef} className="map-container" />
-      {gpsWaiting && showUserDot && <div className="map-gps-badge">📡 Acquiring GPS…</div>}
+      {!ready && (
+        <div className="map-loading map-loading-overlay" aria-busy="true">
+          <div className="map-spinner" />
+          <p>Initializing map…</p>
+        </div>
+      )}
+      {gpsWaiting && showUserDot && ready && (
+        <div className="map-gps-badge">📡 Acquiring GPS…</div>
+      )}
     </div>
   );
 }
