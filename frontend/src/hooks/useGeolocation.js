@@ -1,92 +1,47 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-<<<<<<< HEAD
-export function useGeolocation(options = {}) {
-  const [location, setLocation] = useState(null);
-  const [error,    setError]    = useState(null);
-  const [loading,  setLoading]  = useState(true);
-=======
 /**
- * useGeolocation — wraps navigator.geolocation.watchPosition
- *
- * Returns:
- *   location : { lat, lng, accuracy, timestamp } | null
- *   error    : string | null
- *   loading  : boolean
+ * useGeolocation — polls the browser GPS at a given interval.
+ * Returns: { position, error, isTracking, start, stop }
  */
-export function useGeolocation(options = {}) {
-  const [location, setLocation] = useState(null);
+export function useGeolocation(intervalMs = 5000) {
+  const [position, setPosition] = useState(null);
   const [error, setError]       = useState(null);
-  const [loading, setLoading]   = useState(true);
->>>>>>> frontend-branch
-  const watchId = useRef(null);
+  const [isTracking, setTracking] = useState(false);
+  const [watchId, setWatchId]   = useState(null);
 
-  useEffect(() => {
+  const start = useCallback(() => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser.');
-      setLoading(false);
       return;
     }
-
-<<<<<<< HEAD
-    const opts = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0, ...options };
-
-    watchId.current = navigator.geolocation.watchPosition(
+    setTracking(true);
+    const id = navigator.geolocation.watchPosition(
       (pos) => {
-        setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy, timestamp: new Date(pos.timestamp).toISOString() });
-=======
-    const defaults = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-      ...options,
-    };
-
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        setLocation({
-          lat:       pos.coords.latitude,
-          lng:       pos.coords.longitude,
-          accuracy:  pos.coords.accuracy,
-          timestamp: new Date(pos.timestamp).toISOString(),
+        setPosition({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          timestamp: pos.timestamp,
         });
->>>>>>> frontend-branch
-        setLoading(false);
         setError(null);
       },
-      (err) => {
-<<<<<<< HEAD
-        const msgs = { 1: 'Location access denied. Allow GPS in browser settings.', 2: 'Position unavailable. Enable GPS on your device.', 3: 'Location request timed out.' };
-        setError(msgs[err.code] || err.message);
-        setLoading(false);
-      },
-      opts
+      (err) => setError(err.message),
+      { enableHighAccuracy: true, maximumAge: 0 }
     );
-
-    return () => { if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); };
-=======
-        const messages = {
-          1: 'Location access denied. Please allow GPS in your browser settings.',
-          2: 'Position unavailable. Make sure GPS is enabled on your device.',
-          3: 'Location request timed out. Please try again.',
-        };
-        setError(messages[err.code] || err.message);
-        setLoading(false);
-      },
-      defaults
-    );
-
-    // Cleanup: stop watching when the component using this hook unmounts
-    return () => {
-      if (watchId.current !== null) {
-        navigator.geolocation.clearWatch(watchId.current);
-      }
-    };
->>>>>>> frontend-branch
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setWatchId(id);
   }, []);
 
-  return { location, error, loading };
-}
+  const stop = useCallback(() => {
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      setWatchId(null);
+    }
+    setTracking(false);
+    setPosition(null);
+  }, [watchId]);
 
-export default useGeolocation;
+  useEffect(() => () => { if (watchId !== null) navigator.geolocation.clearWatch(watchId); }, [watchId]);
+
+  return { position, error, isTracking, start, stop };
+}

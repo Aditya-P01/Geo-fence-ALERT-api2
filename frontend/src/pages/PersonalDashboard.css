@@ -1,0 +1,56 @@
+.pd-register-wrap {
+  height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at center, rgba(99,102,241,0.05) 0%, transparent 60%), #05070e;
+}
+.pd-register-box {
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+  padding: 40px; border-radius: 16px; width: 360px; text-align: center;
+}
+.pd-register-box h2 { font-size: 24px; color: #fff; margin: 0 0 12px; }
+.pd-register-box p  { color: rgba(255,255,255,0.5); font-size: 14px; margin: 0 0 24px; line-height: 1.5; }
+.pd-register-box form { display: flex; flex-direction: column; gap: 12px; }
+.pd-register-box input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; color: #fff; }
+.pd-register-box button { background: #6366f1; color: #fff; padding: 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
+
+.pd-layout { height: calc(100vh - 60px); display: flex; overflow: hidden; }
+
+/* Sidebar */
+.pd-sidebar {
+  width: 380px; background: #0a0c14; border-right: 1px solid rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; z-index: 100; flex-shrink: 0;
+}
+
+/* Owner Card */
+.pd-owner-card {
+  padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; gap: 16px;
+}
+.pd-avatar {
+  width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+.pd-owner-info { display: flex; flex-direction: column; }
+.pd-name-input {
+  background: transparent; border: 1px solid transparent; color: #f1f5f9; font-size: 16px; font-weight: 600;
+  padding: 0; margin: 0 0 4px; width: 100%; transition: all 0.2s;
+}
+.pd-name-input:focus { border-bottom: 1px solid #6366f1; outline: none; }
+.pd-owner-id { font-size: 12px; color: rgba(255,255,255,0.3); font-family: monospace; }
+
+/* Stats */
+.pd-stats-strip { display: flex; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.pd-stat { flex: 1; padding: 16px; text-align: center; border-right: 1px solid rgba(255,255,255,0.04); font-size: 12px; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 600; }
+.pd-stat:last-child { border: none; }
+.pd-stat span { display: block; font-size: 24px; color: #fff; font-weight: 700; margin-bottom: 4px; line-height: 1; }
+
+.pd-sidebar-body { flex: 1; overflow-y: auto; }
+
+/* Map Area */
+.pd-map-area { flex: 1; position: relative; }
+.pd-draw-hint {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 900;
+  background: rgba(99,102,241,0.9); color: #fff; padding: 8px 16px; border-radius: 20px;
+  font-size: 13px; display: flex; align-items: center; gap: 12px; backdrop-filter: blur(8px);
+}
+.pd-draw-hint button { background: rgba(0,0,0,0.2); border: none; color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 10px; cursor: pointer; }
+.pd-draw-hint button:hover { background: rgba(0,0,0,0.3); }
