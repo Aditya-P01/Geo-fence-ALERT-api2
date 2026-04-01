@@ -41,6 +41,10 @@ const fenceSchema = Joi.object({
     .default(['ENTER', 'EXIT']),
 
   metadata: Joi.object().default({}),
+
+  // Owner identity (stored in browser localStorage)
+  owner_id:   Joi.string().trim().max(64).optional().allow('', null),
+  owner_name: Joi.string().trim().max(255).optional().allow('', null),
 });
 
 // ── Fence Update Schema (all fields optional) ─────────────────

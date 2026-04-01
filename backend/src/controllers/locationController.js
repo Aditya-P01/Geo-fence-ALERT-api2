@@ -23,6 +23,9 @@ const processLocation = async (req, res, next) => {
     const { deviceId } = req.params;
     const { lat, lng, timestamp, metadata } = req.body;
 
+    // Get Socket.IO instance for live event broadcasting
+    const io = req.app.get('io');
+
     // 1. Load all active fences
     const fences = await getActiveFences();
     logger.debug(`Evaluating ${fences.length} active fences for device ${deviceId}`);
@@ -72,12 +75,20 @@ const processLocation = async (req, res, next) => {
         // Update Redis state
         await setDeviceInside(deviceId, fence.id);
 
-        eventsFired.push({
+        const enterEvent = {
           fence_id: fence.id,
           fence_name: fence.name,
           event_type: 'ENTER',
           alert_id: alert.id,
-        });
+          device_id: deviceId,
+          location: { lat, lng },
+          timestamp: new Date().toISOString(),
+        };
+
+        // Broadcast to all connected WebSocket clients
+        if (io) io.emit('geo_alert', enterEvent);
+
+        eventsFired.push(enterEvent);
 
       } else if (wasInside && !isInsideNow) {
         // ──── EXIT event ───────────────────────────────────
@@ -99,12 +110,20 @@ const processLocation = async (req, res, next) => {
         // Clear Redis state (absence of key = outside)
         await setDeviceOutside(deviceId, fence.id);
 
-        eventsFired.push({
+        const exitEvent = {
           fence_id: fence.id,
           fence_name: fence.name,
           event_type: 'EXIT',
           alert_id: alert.id,
-        });
+          device_id: deviceId,
+          location: { lat, lng },
+          timestamp: new Date().toISOString(),
+        };
+
+        // Broadcast to all connected WebSocket clients
+        if (io) io.emit('geo_alert', exitEvent);
+
+        eventsFired.push(exitEvent);
 
       } else if (wasInside && isInsideNow) {
         // ──── Still inside — refresh TTL ───────────────────

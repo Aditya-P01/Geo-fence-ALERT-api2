@@ -1,23 +1,22 @@
 'use strict';
 
-/**
- * Webhook routes — implemented in Part 3
- * Placeholder to prevent server startup errors.
- */
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const {
+  registerWebhook,
+  getAllWebhooks,
+  getWebhookById,
+  updateWebhook,
+  deleteWebhook,
+} = require('../controllers/webhookController');
 
 router.use(auth);
 
-router.get('/', (req, res) => {
-  res.status(501).json({
-    error: {
-      code: 'NOT_IMPLEMENTED',
-      message: 'Webhook management is implemented in Part 3.',
-      status: 501,
-    },
-  });
-});
+router.get('/',    getAllWebhooks);
+router.post('/',   registerWebhook);
+router.get('/:id', getWebhookById);
+router.put('/:id', updateWebhook);
+router.delete('/:id', deleteWebhook);
 
 module.exports = router;

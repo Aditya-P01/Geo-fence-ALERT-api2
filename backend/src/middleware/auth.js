@@ -1,5 +1,7 @@
 'use strict';
 
+const crypto = require('crypto');
+
 /**
  * API Key Authentication Middleware
  *
@@ -20,8 +22,22 @@ const auth = (req, res, next) => {
   }
 
   const token = authHeader.slice(7); // Remove "Bearer "
+  const expectedKey = process.env.API_KEY;
 
-  if (token !== process.env.API_KEY) {
+  if (!expectedKey) {
+    return res.status(500).json({
+      error: {
+        code: 'SERVER_ERROR',
+        message: 'API_KEY not configured',
+        status: 500,
+      },
+    });
+  }
+
+  const a = Buffer.from(token);
+  const b = Buffer.from(expectedKey);
+
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return res.status(401).json({
       error: {
         code: 'UNAUTHORIZED',
