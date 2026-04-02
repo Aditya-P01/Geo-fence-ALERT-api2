@@ -155,7 +155,7 @@ export default function DeviceDashboard() {
                 }
               : null
           }
-          showUserDot={false}
+          showUserDot={true}
         />
       </main>
     </div>

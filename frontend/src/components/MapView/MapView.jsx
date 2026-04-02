@@ -222,6 +222,7 @@ export default function MapView({
       if (mk?._accCircle) { mk._accCircle.setMap(null); mk._accCircle = null; }
       mk?.setMap(null);
       deviceMarkerRef.current = null;
+      centeredRef.current = false; // Add this so map will pan again when tracking resumes
       return;
     }
     let mk = deviceMarkerRef.current;
