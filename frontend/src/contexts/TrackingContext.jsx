@@ -18,28 +18,33 @@ export function TrackingProvider({ children }) {
       setError('Geolocation is not supported by your browser.');
       return;
     }
-    // Avoid double-watching
     if (watchIdRef.current !== null) return;
 
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        setPosition({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          timestamp: pos.timestamp,
-        });
-        setError(null);
-      },
-      (err) => setError(err.message),
-      { enableHighAccuracy: true, maximumAge: 0 }
-    );
-    watchIdRef.current = id;
+    // Use active polling instead of watchPosition for better desktop reliability
+    const fetchLocation = () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setPosition({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            timestamp: pos.timestamp,
+          });
+          setError(null);
+        },
+        (err) => setError(err.message),
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      );
+    };
+
+    // Fetch immediately, then loop
+    fetchLocation();
+    watchIdRef.current = setInterval(fetchLocation, 5000);
   }, []);
 
   const stopWatch = useCallback(() => {
     if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
+      clearInterval(watchIdRef.current);
       watchIdRef.current = null;
     }
   }, []);
@@ -48,7 +53,7 @@ export function TrackingProvider({ children }) {
   const start = useCallback(() => {
     localStorage.setItem(LS_KEY, 'true');
     setIsTracking(true);
-    setPosition(null); // reset so map re-centers on fresh position
+    setPosition(null);
     startWatch();
   }, [startWatch]);
 
