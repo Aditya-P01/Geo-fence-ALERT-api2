@@ -21,7 +21,6 @@ function getDeviceId() {
 
 export default function DeviceDashboard() {
   const deviceId = getDeviceId();
-  const [deviceLabel, setDeviceLabel] = useState(() => localStorage.getItem(DEVICE_LABEL_KEY) || '');
   const { position, error: gpsError, isTracking, start, stop } = useGeolocation();
   const [fences, setFences]       = useState([]);
   const [insideFences, setInside] = useState([]);

@@ -21,7 +21,7 @@ export default function AlertFeed({ maxItems = 50 }) {
   useEffect(() => {
     alertApi.getAll({ limit: maxItems }).then(r => setAlerts(r.data.alerts || [])).catch(() => {});
     alertApi.stats().then(r => setStats(r.data)).catch(() => {});
-  }, []);
+  }, [maxItems]);
 
   // Live updates via Socket.IO
   useSocket('geo_alert', (event) => {

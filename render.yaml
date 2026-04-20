@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: geo-fence-api
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # You will enter this securely in the Render Dashboard
+      - key: REDIS_URL
+        sync: false # You will enter this securely in the Render Dashboard
+      - key: API_KEY
+        sync: false # Your secret API Key
