@@ -17,6 +17,7 @@ const redis = new Redis(process.env.REDIS_URL || {
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
   lazyConnect: false,
+  family: 0, // Ensure IPv4 is used, recommended for Upstash Redis endpoints
 });
 
 redis.on('connect', () => logger.info('Redis: connected'));
