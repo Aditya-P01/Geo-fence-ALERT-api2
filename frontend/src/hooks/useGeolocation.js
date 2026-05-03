@@ -1,8 +1,8 @@
 import { useTracking } from '../contexts/TrackingContext';
 
 /**
- * useGeolocation — now just a wrapper around TrackingContext 
- * so existing consumers don't need to change imports.
+ * useGeolocation — wrapper around TrackingContext.
+ * Returns { position, mapCenter, error, isTracking, start, stop }
  */
 export function useGeolocation() {
   return useTracking();

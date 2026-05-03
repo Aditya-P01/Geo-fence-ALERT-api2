@@ -10,10 +10,10 @@ export default function Navbar() {
         <span className="navbar-title">GeoFence Alert</span>
       </div>
       <div className="navbar-links">
-        <Link to="/my" className={`nav-link ${pathname === '/my' ? 'active' : ''}`}>
+        <Link to="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
           My Fences
         </Link>
-        <Link to="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
+        <Link to="/admin" className={`nav-link ${pathname === '/admin' ? 'active' : ''}`}>
           Global Admin
         </Link>
         <Link to="/device" className={`nav-link ${pathname === '/device' ? 'active' : ''}`}>

@@ -21,7 +21,7 @@ function getDeviceId() {
 
 export default function DeviceDashboard() {
   const deviceId = getDeviceId();
-  const { position, error: gpsError, isTracking, start, stop } = useGeolocation();
+  const { position, mapCenter, error: gpsError, isTracking, start, stop } = useGeolocation();
   const [fences, setFences]       = useState([]);
   const [insideFences, setInside] = useState([]);
   const [lastReport,   setLast]   = useState(null);
@@ -145,6 +145,7 @@ export default function DeviceDashboard() {
       <main className="device-map">
         <MapView
           fences={fences.filter((f) => f.is_active)}
+          mapCenter={mapCenter}
           devicePosition={
             position
               ? {
@@ -152,9 +153,8 @@ export default function DeviceDashboard() {
                   lng: position.lng,
                   accuracy: position.accuracy,
                 }
-              : null
+              : mapCenter
           }
-          showUserDot={true}
         />
       </main>
     </div>

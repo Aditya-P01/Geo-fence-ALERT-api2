@@ -9,8 +9,8 @@ export default function App() {
     <BrowserRouter>
       <Navbar />
       <Routes>
-        <Route path="/my"     element={<PersonalDashboard />} />
-        <Route path="/"       element={<AdminDashboard />} />
+        <Route path="/"       element={<PersonalDashboard />} />
+        <Route path="/admin"  element={<AdminDashboard />} />
         <Route path="/device" element={<DeviceDashboard />} />
       </Routes>
     </BrowserRouter>

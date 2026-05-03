@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   loadGoogleMaps,
-  readDefaultCenter,
-  subscribeUserPos,
   FENCE_COLORS,
   userDotIcon,
   darkMapStyles,
@@ -52,20 +50,33 @@ function fenceShape(map, fence, colors, onFenceClick) {
   return null;
 }
 
+/**
+ * MapView — Google Maps display component.
+ * 
+ * IMPORTANT: This component has ZERO internal GPS watchers.
+ * All position data comes via props from TrackingContext.
+ * 
+ * Props:
+ *   fences         - array of fence objects to render
+ *   devicePosition - { lat, lng, accuracy } from TrackingContext (continuous when tracking)
+ *   mapCenter      - { lat, lng } from TrackingContext (one-shot for initial centering)
+ *   drawingMode    - 'circle' | 'polygon' | null
+ *   onFenceDrawn   - callback when user finishes drawing
+ *   onFenceClick   - callback when user clicks a fence
+ */
 export default function MapView({
   fences = [],
   devicePosition,
+  mapCenter,
   drawingMode,
   onFenceDrawn,
   onFenceClick,
-  showUserDot = true,
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const overlaysRef = useRef([]);
   const deviceMarkerRef = useRef(null);
-  const userDotRef = useRef(null);
-  const userAccRef = useRef(null);
+  const deviceAccRef = useRef(null);
   const drawMgrRef = useRef(null);
   const centeredRef = useRef(false);
   const onDrawRef = useRef(onFenceDrawn);
@@ -73,9 +84,9 @@ export default function MapView({
 
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [error, setError] = useState(null);
-  const [gpsWaiting, setGpsWaiting] = useState(true);
   const [ready, setReady] = useState(false);
 
+  // ── Load Google Maps API ─────────────────────────────────────
   useEffect(() => {
     if (!KEY || KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
       setError('Set VITE_GOOGLE_MAPS_KEY in frontend/.env.local');
@@ -84,13 +95,16 @@ export default function MapView({
     loadGoogleMaps().then(() => setMapsLoaded(true)).catch((e) => setError(e.message));
   }, []);
 
+  // ── Initialize map (NO GPS dependency — instant) ─────────────
   useEffect(() => {
     if (!mapsLoaded || !containerRef.current || mapRef.current) return;
-    let cancelled = false;
-    (async () => {
-      const fb = readDefaultCenter();
-      const center = fb || { lat: 20, lng: 0 };
-      const zoom = fb ? 12 : 2;
+
+    try {
+      // Default center: India if no position available yet
+      const center = mapCenter
+        ? { lat: mapCenter.lat, lng: mapCenter.lng }
+        : { lat: 20.5937, lng: 78.9629 };
+      const zoom = mapCenter ? 15 : 5;
 
       const m = new window.google.maps.Map(containerRef.current, {
         center,
@@ -104,6 +118,7 @@ export default function MapView({
       });
       mapRef.current = m;
 
+      // Drawing manager
       const dm = new window.google.maps.drawing.DrawingManager({
         drawingControl: false,
         circleOptions: drawOpts('#6366f1', '#6366f1'),
@@ -133,69 +148,23 @@ export default function MapView({
         onDrawRef.current?.({ type: 'polygon', coordinates: coords });
       });
 
-      // Mark ready immediately (don't block on GPS prompt).
-      if (!cancelled) setReady(true);
-
-      // One-shot GPS recenter (fast path) — does not block initial map render.
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (p) => {
-            if (cancelled || !mapRef.current) return;
-            mapRef.current.panTo({ lat: p.coords.latitude, lng: p.coords.longitude });
-            mapRef.current.setZoom(16);
-          },
-          () => { },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 }
-        );
-      }
-    })();
-    return () => { cancelled = true; };
+      setReady(true);
+    } catch (err) {
+      console.error('[MapView] Init error:', err);
+      setError('Failed to initialize map: ' + (err.message || 'unknown error'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapsLoaded]);
 
+  // ── Re-center map when mapCenter arrives (one-time) ──────────
   useEffect(() => {
-    if (!showUserDot || !ready) return;
-    return subscribeUserPos((pos) => {
-      setGpsWaiting(false);
-      const map = mapRef.current;
-      if (!map || !window.google) return;
+    if (!mapRef.current || !mapCenter || centeredRef.current) return;
+    mapRef.current.panTo({ lat: mapCenter.lat, lng: mapCenter.lng });
+    mapRef.current.setZoom(15);
+    centeredRef.current = true;
+  }, [mapCenter]);
 
-      if (!centeredRef.current && !devicePosition) {
-        map.panTo({ lat: pos.lat, lng: pos.lng });
-        map.setZoom(16);
-        centeredRef.current = true;
-      }
-      const acc = Math.max(pos.acc || 10, 8);
-      const c = { lat: pos.lat, lng: pos.lng };
-      if (!userAccRef.current) {
-        userAccRef.current = new window.google.maps.Circle({
-          map,
-          center: c,
-          radius: acc,
-          fillColor: '#1a73e8',
-          fillOpacity: 0.1,
-          strokeColor: '#1a73e8',
-          strokeOpacity: 0.35,
-          strokeWeight: 1,
-          clickable: false,
-          zIndex: 490,
-        });
-      } else {
-        userAccRef.current.setCenter(c);
-        userAccRef.current.setRadius(acc);
-      }
-      if (!userDotRef.current) {
-        userDotRef.current = new window.google.maps.Marker({
-          map,
-          position: c,
-          zIndex: 500,
-          title: 'Your location',
-          optimized: true,
-          icon: userDotIcon(window.google.maps),
-        });
-      } else userDotRef.current.setPosition(c);
-    });
-  }, [showUserDot, ready, devicePosition]);
-
+  // ── Drawing mode toggle ──────────────────────────────────────
   useEffect(() => {
     const dm = drawMgrRef.current;
     if (!dm || !window.google) return;
@@ -203,6 +172,7 @@ export default function MapView({
     dm.setDrawingMode(drawingMode ? { circle: T.CIRCLE, polygon: T.POLYGON }[drawingMode] : null);
   }, [drawingMode]);
 
+  // ── Render fence overlays ────────────────────────────────────
   useEffect(() => {
     if (!mapRef.current || !window.google) return;
     overlaysRef.current.forEach((o) => o.setMap(null));
@@ -214,35 +184,47 @@ export default function MapView({
     });
   }, [fences, onFenceClick]);
 
+  // ── Device position marker (from TrackingContext) ────────────
   useEffect(() => {
     if (!mapRef.current || !window.google) return;
     const map = mapRef.current;
+
     if (!devicePosition) {
-      const mk = deviceMarkerRef.current;
-      if (mk?._accCircle) { mk._accCircle.setMap(null); mk._accCircle = null; }
-      mk?.setMap(null);
-      deviceMarkerRef.current = null;
-      centeredRef.current = false; // Add this so map will pan again when tracking resumes
+      // Clean up marker when tracking stops
+      if (deviceMarkerRef.current) {
+        deviceMarkerRef.current.setMap(null);
+        deviceMarkerRef.current = null;
+      }
+      if (deviceAccRef.current) {
+        deviceAccRef.current.setMap(null);
+        deviceAccRef.current = null;
+      }
       return;
     }
-    let mk = deviceMarkerRef.current;
-    if (!mk) {
-      mk = new window.google.maps.Marker({
+
+    const pos = { lat: devicePosition.lat, lng: devicePosition.lng };
+
+    // Create or update marker
+    if (!deviceMarkerRef.current) {
+      deviceMarkerRef.current = new window.google.maps.Marker({
         map,
+        position: pos,
         zIndex: 999,
-        title: 'Device location',
+        title: 'Your location',
         optimized: true,
         icon: userDotIcon(window.google.maps),
       });
-      deviceMarkerRef.current = mk;
+    } else {
+      deviceMarkerRef.current.setPosition(pos);
     }
-    mk.setPosition(devicePosition);
-    const r = devicePosition.accuracy != null ? Math.max(devicePosition.accuracy, 8) : 25;
-    if (!mk._accCircle) {
-      mk._accCircle = new window.google.maps.Circle({
+
+    // Accuracy circle
+    const radius = Math.max(devicePosition.accuracy || 10, 8);
+    if (!deviceAccRef.current) {
+      deviceAccRef.current = new window.google.maps.Circle({
         map,
-        center: devicePosition,
-        radius: r,
+        center: pos,
+        radius,
         fillColor: '#1a73e8',
         fillOpacity: 0.08,
         strokeColor: '#1a73e8',
@@ -252,20 +234,21 @@ export default function MapView({
         zIndex: 498,
       });
     } else {
-      mk._accCircle.setCenter(devicePosition);
-      mk._accCircle.setRadius(r);
+      deviceAccRef.current.setCenter(pos);
+      deviceAccRef.current.setRadius(radius);
     }
+
+    // Pan to first position received
     if (!centeredRef.current) {
-      map.panTo(devicePosition);
+      map.panTo(pos);
       map.setZoom(16);
       centeredRef.current = true;
     }
   }, [devicePosition]);
 
+  // ── Render ───────────────────────────────────────────────────
   if (error) return <div className="map-error"><span>⚠️</span><p>{error}</p></div>;
 
-  // Must mount the map container as soon as the JS API is loaded; otherwise `containerRef`
-  // stays null and the map never initializes (ready never flips true).
   if (!mapsLoaded) {
     return (
       <div className="map-loading">
@@ -283,9 +266,6 @@ export default function MapView({
           <div className="map-spinner" />
           <p>Initializing map…</p>
         </div>
-      )}
-      {gpsWaiting && showUserDot && ready && (
-        <div className="map-gps-badge">📡 Acquiring GPS…</div>
       )}
     </div>
   );

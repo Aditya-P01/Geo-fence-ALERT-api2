@@ -54,3 +54,85 @@
 }
 .pd-draw-hint button { background: rgba(0,0,0,0.2); border: none; color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 10px; cursor: pointer; }
 .pd-draw-hint button:hover { background: rgba(0,0,0,0.3); }
+
+/* Tracking Card */
+.pd-tracking-card {
+  padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.pd-track-btn {
+  width: 100%; padding: 12px; border: none; border-radius: 10px;
+  font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s;
+}
+.pd-track-btn.start {
+  background: linear-gradient(135deg, #22d3ee, #6366f1); color: #fff;
+}
+.pd-track-btn.start:hover { opacity: 0.9; transform: scale(1.01); }
+.pd-track-btn.stop {
+  background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3);
+}
+.pd-track-btn.stop:hover { background: rgba(239,68,68,0.25); }
+.pd-track-status {
+  margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.5); display: flex; align-items: center; gap: 6px;
+}
+.pd-track-dot { color: #22d3ee; font-size: 10px; animation: pd-pulse 1.5s ease-in-out infinite; }
+@keyframes pd-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.pd-gps-error {
+  margin-top: 8px; padding: 8px 12px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 8px; font-size: 12px; color: #f87171;
+}
+
+/* Inside Panel */
+.pd-inside-panel {
+  padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(34,211,238,0.03);
+}
+.pd-inside-panel h4 { margin: 0 0 8px; font-size: 12px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+.pd-inside-chip {
+  padding: 6px 10px; background: rgba(34,211,238,0.1); border: 1px solid rgba(34,211,238,0.2);
+  border-radius: 8px; font-size: 13px; color: #22d3ee; margin-bottom: 6px;
+}
+
+/* Track coordinates */
+.pd-track-coords { font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.35); margin-left: 4px; }
+.pd-track-dot.acquiring { color: #fbbf24; }
+
+/* Alert History */
+.pd-alert-history {
+  padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06);
+}
+.pd-alert-history h4 {
+  margin: 0 0 12px; font-size: 13px; color: rgba(255,255,255,0.5);
+  font-weight: 600;
+}
+.pd-alert-empty {
+  padding: 20px 0; text-align: center; font-size: 12px;
+  color: rgba(255,255,255,0.25); line-height: 1.5;
+}
+.pd-alert-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; margin-bottom: 6px;
+  border-radius: 8px; background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.2s;
+}
+.pd-alert-item:hover { background: rgba(255,255,255,0.04); }
+.pd-alert-item.enter { border-left: 3px solid #22d3ee; }
+.pd-alert-item.exit  { border-left: 3px solid #f87171; }
+.pd-alert-icon { font-size: 16px; margin-top: 2px; }
+.pd-alert-item.enter .pd-alert-icon { color: #22d3ee; }
+.pd-alert-item.exit  .pd-alert-icon { color: #f87171; }
+.pd-alert-body { flex: 1; min-width: 0; }
+.pd-alert-title { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.pd-alert-type {
+  font-size: 10px; font-weight: 700; padding: 2px 6px;
+  border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.pd-alert-type.enter { background: rgba(34,211,238,0.15); color: #22d3ee; }
+.pd-alert-type.exit  { background: rgba(248,113,113,0.15); color: #f87171; }
+.pd-alert-fence {
+  font-size: 13px; color: #e2e8f0; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pd-alert-meta {
+  display: flex; gap: 12px; font-size: 11px; color: rgba(255,255,255,0.3);
+}

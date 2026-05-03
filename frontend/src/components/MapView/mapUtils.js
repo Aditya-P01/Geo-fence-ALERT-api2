@@ -1,22 +1,6 @@
 const KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
-export function readDefaultCenter() {
-  const lat = parseFloat(import.meta.env.VITE_MAP_DEFAULT_LAT || '');
-  const lng = parseFloat(import.meta.env.VITE_MAP_DEFAULT_LNG || '');
-  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
-}
-
-export function getOneShotPosition() {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition(
-      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }),
-      () => resolve(null),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 }
-    );
-  });
-}
-
+// ── Load Google Maps API (singleton promise) ────────────────────
 let mapsPromise;
 export function loadGoogleMaps() {
   if (mapsPromise) return mapsPromise;
@@ -62,25 +46,7 @@ export function loadGoogleMaps() {
   return mapsPromise;
 }
 
-const WATCH = { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 };
-let watchId, lastPos;
-const listeners = new Set();
-export function subscribeUserPos(cb) {
-  listeners.add(cb);
-  if (lastPos) cb(lastPos);
-  if (watchId == null && navigator.geolocation) {
-    watchId = navigator.geolocation.watchPosition(
-      (p) => {
-        lastPos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.max(p.coords.accuracy || 0, 5) };
-        listeners.forEach((fn) => fn(lastPos));
-      },
-      () => {},
-      WATCH
-    );
-  }
-  return () => listeners.delete(cb);
-}
-
+// ── Visual constants ────────────────────────────────────────────
 export const FENCE_COLORS = {
   circle: { stroke: '#6366f1', fill: '#6366f1' },
   polygon: { stroke: '#10b981', fill: '#10b981' },

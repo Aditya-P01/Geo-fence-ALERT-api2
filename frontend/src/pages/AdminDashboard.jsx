@@ -3,10 +3,12 @@ import MapView from '../components/MapView/MapView';
 import FencePanel from '../components/FencePanel/FencePanel';
 import AlertFeed from '../components/AlertFeed/AlertFeed';
 import FenceDetailModal from '../components/FenceDetailModal/FenceDetailModal';
+import { useGeolocation } from '../hooks/useGeolocation';
 import { fenceApi, ownerApi } from '../api/client';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
+  const { mapCenter } = useGeolocation();
   const [fences,       setFences]       = useState([]);
   const [ownerStats,   setOwnerStats]   = useState({ owners: [] });
   const [drawingMode,  setDrawingMode]  = useState(null);
@@ -87,7 +89,8 @@ export default function AdminDashboard() {
           drawingMode={drawingMode}
           onFenceDrawn={handleFenceDrawn}
           onFenceClick={setSelectedFence}
-          showUserDot={true}
+          mapCenter={mapCenter}
+          devicePosition={mapCenter}
         />
         <FenceDetailModal fence={selectedFence} onClose={() => setSelectedFence(null)} />
       </main>
