@@ -17,9 +17,27 @@ const fencesRouter = require('./routes/fences');
 const app = express();
 const server = http.createServer(app);
 
+// ── Allowed Origins ────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean); // remove undefined entries
+
+// Also allow any *.vercel.app subdomain for preview deployments
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // allow server-to-server / curl
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (/\.vercel\.app$/.test(origin)) return true;
+  return false;
+}
+
 // ── Socket.IO ──────────────────────────────────────────────────
 const io = new Server(server, {
-  cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173', methods: ['GET', 'POST'] },
+  cors: {
+    origin: (origin, cb) => cb(null, isAllowedOrigin(origin)),
+    methods: ['GET', 'POST'],
+  },
 });
 
 io.on('connection', (socket) => {
@@ -46,11 +64,12 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 app.use(helmet({ contentSecurityPolicy: false }));
 
-// Security Finding #5: CORS Policy too open
-app.use(cors({ 
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+// Security Finding #5: CORS — allow Vercel frontend + localhost
+app.use(cors({
+  origin: (origin, cb) => cb(null, isAllowedOrigin(origin)),
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 
 app.use(express.json());
