@@ -7,9 +7,9 @@ const LS_KEY = 'geo_tracking_enabled';
  * Unified GPS Engine — THE ONLY geolocation source in the entire app.
  * 
  * Architecture:
- * 1. On mount: single getCurrentPosition for initial map centering (fast, allows cached)
- * 2. When tracking ON: single watchPosition for continuous updates (THE ONLY watcher)
- * 3. When tracking OFF: clear watcher, keep last known position for map
+ * 1. On mount: single getCurrentPosition for initial map centering
+ * 2. On mount: single watchPosition for continuous local UI updates (blue dot)
+ * 3. `isTracking` state simply controls whether the app broadcasts location to the backend.
  * 
  * CRITICAL: No other component should call navigator.geolocation directly.
  * All position data flows through this context.
@@ -47,7 +47,7 @@ export function TrackingProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Core watcher: runs ONLY when tracking is ON ──────────────
+  // ── Core watcher: runs ALWAYS to update the blue dot locally ──────────────
   const startWatch = useCallback(() => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser.');
@@ -95,22 +95,17 @@ export function TrackingProvider({ children }) {
   const start = useCallback(() => {
     localStorage.setItem(LS_KEY, 'true');
     setIsTracking(true);
-    setError(null);
-    startWatch();
-  }, [startWatch]);
+  }, []);
 
   // ── Public: stop tracking ────────────────────────────────────
   const stop = useCallback(() => {
     localStorage.setItem(LS_KEY, 'false');
     setIsTracking(false);
-    setPosition(null);
-    setError(null);
-    stopWatch();
-  }, [stopWatch]);
+  }, []);
 
-  // ── Auto-resume on mount if was tracking ─────────────────────
+  // ── Auto-start continuous local GPS tracking ─────────────────────
   useEffect(() => {
-    if (isTracking) startWatch();
+    startWatch();
     return () => stopWatch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

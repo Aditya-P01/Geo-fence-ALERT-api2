@@ -254,7 +254,7 @@ export default function PersonalDashboard() {
           onFenceClick={setSelectedFence}
           mapCenter={mapCenter}
           devicePosition={
-            isTracking && position
+            position
               ? { lat: position.lat, lng: position.lng, accuracy: position.accuracy }
               : mapCenter
           }

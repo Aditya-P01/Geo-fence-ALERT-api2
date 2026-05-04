@@ -124,15 +124,15 @@ const updateFence = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── DELETE (soft) ─────────────────────────────────────────────
+// ── DELETE (hard) ─────────────────────────────────────────────
 const deleteFence = async (req, res, next) => {
   try {
     const result = await db.query(
-      `UPDATE geo_fences SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND is_active = TRUE RETURNING id`,
+      `DELETE FROM geo_fences WHERE id = $1 RETURNING id`,
       [req.params.fenceId]
     );
     if (!result.rows.length)
-      return res.status(404).json({ error: { code: 'FENCE_NOT_FOUND', message: `No active fence found with id: ${req.params.fenceId}`, status: 404 } });
+      return res.status(404).json({ error: { code: 'FENCE_NOT_FOUND', message: `No fence found with id: ${req.params.fenceId}`, status: 404 } });
     await invalidateCache();
     res.json({ message: 'Fence deleted successfully', id: req.params.fenceId });
   } catch (err) { next(err); }
