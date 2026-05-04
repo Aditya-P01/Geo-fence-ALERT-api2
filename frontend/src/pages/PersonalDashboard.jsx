@@ -42,7 +42,7 @@ export default function PersonalDashboard() {
 
   const loadMyFences = useCallback(() => {
     if (!owner) return;
-    fenceApi.getAll({ owner_id: owner.owner_id, limit: 100 })
+    fenceApi.getAll({ owner_id: owner.owner_id, active: 'false', limit: 100 })
       .then(r => setFences(r.data.fences || []))
       .catch(() => {});
   }, [owner]);
@@ -234,37 +234,8 @@ export default function PersonalDashboard() {
             onPendingClear={() => setPendingShape(null)}
             ownerId={owner.owner_id}
             ownerName={owner.owner_name}
+            alertHistory={alertHistory}
           />
-
-          {/* ── Alert Notification History ────────────────────── */}
-          <div className="pd-alert-history">
-            <h4>📋 Alert History</h4>
-            {alertHistory.length === 0 && (
-              <div className="pd-alert-empty">
-                No alerts yet. Create a fence and start tracking to see ENTER/EXIT events.
-              </div>
-            )}
-            {alertHistory.map((a, i) => {
-              const isEnter = (a.event_type === 'ENTER');
-              return (
-                <div key={a.alert_id || a.id || i} className={`pd-alert-item ${isEnter ? 'enter' : 'exit'}`}>
-                  <span className="pd-alert-icon">{isEnter ? '→' : '←'}</span>
-                  <div className="pd-alert-body">
-                    <div className="pd-alert-title">
-                      <span className={`pd-alert-type ${isEnter ? 'enter' : 'exit'}`}>
-                        {a.event_type}
-                      </span>
-                      <span className="pd-alert-fence">{a.fence_name || a.fence_id}</span>
-                    </div>
-                    <div className="pd-alert-meta">
-                      {a.device_id && <span>Device: {a.device_id}</span>}
-                      <span>{timeAgo(a.timestamp || a.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </aside>
 

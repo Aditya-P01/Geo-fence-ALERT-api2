@@ -4,13 +4,14 @@ import FencePanel from '../components/FencePanel/FencePanel';
 import AlertFeed from '../components/AlertFeed/AlertFeed';
 import FenceDetailModal from '../components/FenceDetailModal/FenceDetailModal';
 import { useGeolocation } from '../hooks/useGeolocation';
-import { fenceApi, ownerApi } from '../api/client';
+import { fenceApi, ownerApi, alertApi } from '../api/client';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
   const { mapCenter } = useGeolocation();
   const [fences,       setFences]       = useState([]);
   const [ownerStats,   setOwnerStats]   = useState({ owners: [] });
+  const [alertHistory, setAlertHistory] = useState([]);
   const [drawingMode,  setDrawingMode]  = useState(null);
   const [pendingShape, setPendingShape] = useState(null);
   const [activeTab,    setActiveTab]    = useState('fences'); // 'fences' | 'alerts'
@@ -24,7 +25,12 @@ export default function AdminDashboard() {
     ownerApi.getStats()
       .then(r => setOwnerStats(r.data))
       .catch(() => {});
+
+    alertApi.getAll({ limit: 100 })
+      .then(r => setAlertHistory(r.data.alerts || []))
+      .catch(() => {});
   }, []);
+
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -70,6 +76,8 @@ export default function AdminDashboard() {
               onStartDraw={handleStartDraw}
               pendingShape={pendingShape}
               onPendingClear={() => setPendingShape(null)}
+              adminMode={true}
+              alertHistory={alertHistory}
             />
           )}
           {activeTab === 'alerts' && <AlertFeed maxItems={100} />}

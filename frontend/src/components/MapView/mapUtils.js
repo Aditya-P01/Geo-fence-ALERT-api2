@@ -27,7 +27,7 @@ export function loadGoogleMaps() {
       return;
     }
     const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${KEY}&libraries=drawing,geometry&loading=async`;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${KEY}&libraries=drawing,geometry`;
     s.async = true;
     s.defer = true;
     s.onload = () => {
